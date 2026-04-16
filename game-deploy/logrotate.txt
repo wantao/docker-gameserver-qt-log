@@ -1,0 +1,63 @@
+vi /etc/logrotate.d/game_srv
+
+/home/game-deploy/logs/server_1001/game.log {
+    daily               # 每天切割
+    missingok           # 日志不存在也不报错
+    rotate 10           # 保留最近10份
+    compress            # 切割后压缩
+    delaycompress       # 延迟压缩，不影响当前写入
+    notifempty          # 空日志不切割
+    copytruncate        # 核心：先拷贝再截断，不重启游戏服
+}
+
+
+logrotate /etc/logrotate.d/game_srv
+logrotate -f /etc/logrotate.d/game_srv
+
+
+[root@localhost ~]# more /etc/logrotate.d/game_srv 
+/home/game-deploy/log/server_1001/game.log {
+    daily
+    missingok
+    rotate 10
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+}
+
+/home/game-deploy/logs/server_1001/game.log {
+    daily               # 每天切割
+    missingok           # 日志不存在也不报错
+    rotate 10           # 保留最近10份
+    compress            # 切割后压缩
+    delaycompress       # 延迟压缩，不影响当前写入
+    notifempty          # 空日志不切割
+    copytruncate        # 核心：先拷贝再截断，不重启游戏服
+}
+
+每分钟检查一次游戏日志，只要超过 1KB 就立刻切割！
+[root@localhost ~]# crontab -e
+
+*  *  *  *  *  /usr/sbin/logrotate /etc/logrotate.d/game_srv >/dev/null 2>&1
+/home/game-deploy/log/server_1001/game.log {
+    size 1k
+    missingok
+    rotate 10
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+}
+~
+
+
+[root@localhost ~]# more /etc/cron.daily/logrotate 
+#!/bin/sh
+
+/usr/sbin/logrotate -s /var/lib/logrotate/logrotate.status /etc/logrotate.conf
+EXITVALUE=$?
+if [ $EXITVALUE != 0 ]; then
+    /usr/bin/logger -t logrotate "ALERT exited abnormally with [$EXITVALUE]"
+fi
+exit 0

@@ -1,0 +1,149 @@
+[root@localhost game-deploy]# docker ps
+CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                    NAMES
+dbfecbbfc0f5        game:1001           "/game/gameserver"   8 minutes ago       Up 8 minutes        0.0.0.0:8001->8001/tcp   game1001
+
+
+[root@localhost game-deploy]# docker exec -it dbfecbbfc0f5 /bin/bash
+[root@dbfecbbfc0f5 game]# netstat -tlnp | grep 8001
+
+
+[root@localhost game-deploy]# docker ps
+CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                    NAMES
+dbfecbbfc0f5        game:1001           "/game/gameserver"   47 minutes ago      Up 47 minutes       0.0.0.0:8001->8001/tcp   game1001
+
+
+[root@localhost game-deploy]# docker rm -f dbfecbbfc0f5
+dbfecbbfc0f5
+
+[root@localhost game-deploy]# docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+
+
+[root@localhost game-deploy]# docker build -t gameserver:latest .
+Sending build context to Docker daemon 20.99 kB
+Step 1/6 : FROM centos:7
+ ---> eeb6ee3f44bd
+Step 2/6 : WORKDIR /game
+ ---> Using cache
+ ---> 2af63a22f45c
+Step 3/6 : COPY ./gameserver /game/gameserver
+ ---> Using cache
+ ---> 19a4c659ad45
+Step 4/6 : COPY ./config /game/config
+ ---> Using cache
+ ---> dcf3d51cff5c
+Step 5/6 : COPY ./log /game/log
+ ---> acc20a87da76
+Removing intermediate container cddc27fe9f3e
+Step 6/6 : CMD /game/gameserver
+ ---> Running in eba7bea3db58
+ ---> 4006f53e1f74
+Removing intermediate container eba7bea3db58
+Successfully built 4006f53e1f74
+
+
+[root@localhost game-deploy]# docker run -d --name game-server gameserver:latest
+4053a926831cda7d6ee918070a0bfc41d22469c06878cf32a9f26022a9ceb03c
+[root@localhost game-deploy]# 
+
+[root@localhost game-deploy]# docker ps
+CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS               NAMES
+4053a926831c        gameserver:latest   "/game/gameserver"   19 seconds ago      Up 18 seconds                           game-server
+
+
+[root@localhost game-deploy]# docker exec -it game-server /bin/bash
+[root@4053a926831c game]# ll
+total 12
+drwxr-xr-x. 2 root root    6 Apr  7 05:09 config
+-rwxr-xr-x. 1 root root 8456 Apr  6 11:45 gameserver
+drwxr-xr-x. 2 root root    6 Apr  7 05:57 log
+[root@4053a926831c game]# ll log
+total 0
+
+
+[root@localhost game-deploy]# ./run.sh 
+停止旧容器...
+game1001
+game1001
+构建新镜像...
+Sending build context to Docker daemon 20.99 kB
+Step 1/6 : FROM centos:7
+ ---> eeb6ee3f44bd
+Step 2/6 : WORKDIR /game
+ ---> Using cache
+ ---> 2af63a22f45c
+Step 3/6 : COPY ./gameserver /game/gameserver
+ ---> Using cache
+ ---> 19a4c659ad45
+Step 4/6 : COPY ./config /game/config
+ ---> Using cache
+ ---> dcf3d51cff5c
+Step 5/6 : COPY ./log /game/log
+ ---> Using cache
+ ---> acc20a87da76
+Step 6/6 : CMD /game/gameserver
+ ---> Using cache
+ ---> 4006f53e1f74
+Successfully built 4006f53e1f74
+启动新容器...
+33e92536bb227017156101029cf47d05f8ab73941482430c904241d19fae280f
+/usr/bin/docker-current: Error response from daemon: driver failed programming external connectivity on endpoint game1001 (7a866779cd83b6af8b95517839b7cc2e813f57c45a0dc492d15dcd56f8781a24):  (iptables failed: iptables --wait -t nat -A DOCKER -p tcp -d 0/0 --dport 8001 -j DNAT --to-destination 172.17.0.2:8001 ! -i docker0: iptables: No chain/target/match by that name.
+
+[root@localhost game-deploy]# systemctl restart docker
+[root@localhost game-deploy]# chcon -Rt svirt_sandbox_file_t $PWD/log
+[root@localhost game-deploy]# chcon -Rt svirt_sandbox_file_t $PWD/config
+[root@localhost game-deploy]# ./run.sh 
+停止旧容器...
+game1001
+game1001
+构建新镜像...
+Sending build context to Docker daemon 20.99 kB
+Step 1/6 : FROM centos:7
+ ---> eeb6ee3f44bd
+Step 2/6 : WORKDIR /game
+ ---> Using cache
+ ---> 2af63a22f45c
+Step 3/6 : COPY ./gameserver /game/gameserver
+ ---> Using cache
+ ---> 19a4c659ad45
+Step 4/6 : COPY ./config /game/config
+ ---> Using cache
+ ---> dcf3d51cff5c
+Step 5/6 : COPY ./log /game/log
+ ---> Using cache
+ ---> acc20a87da76
+Step 6/6 : CMD /game/gameserver
+ ---> Using cache
+ ---> 4006f53e1f74
+Successfully built 4006f53e1f74
+启动新容器...
+99d5e14c6b8c94650beb2cb74aec6065e661e1918d8a901bddd3bc45cbac9959
+启动完成！
+99d5e14c6b8c        game:1001           "/game/gameserver"   Less than a second ago   Up Less than a second   0.0.0.0:8001->8001/tcp   game1001
+
+
+宿主机上用netstat看不到监听端口的连接，而windows上可以看到，是连接在docker容器内部，如果要看连接，需要进入容器：
+docker exec -it game_1002 /bin/bash
+可以查看文件
+[root@ee3aabf144c9 game]# more /proc/net/tcp
+  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode                                                     
+   0: 00000000:1F42 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 83482 1 0000000000000000 100 0 0 10 0                     
+   1: 030011AC:1F42 0148A8C0:CB79 01 00000000:00000000 00:00000000 00000000     0        0 83483 1 0000000000000000 20 0 0 10 -
+1. 先算 IP 地址（十六进制 → 反转 → 十进制）
+Linux 的 /proc/net/tcp 里的 IP 是 十六进制 + 小端序（倒序）
+① 本地 IP：030011AC
+拆分：03 00 11 AC倒序：AC 11 00 03
+转十进制：
+AC = 172
+11 = 17
+00 = 0
+03 = 3
+本地 IP = 172.17.0.3（这是你的 docker 容器内部 IP）
+
+1F42(十六) = 1*16³ + 15*16² + 4*16 + 2
+= 4096 + 3840 + 64 + 2
+= **8002**
+
+
+
+
